@@ -1,10 +1,11 @@
 /***************************************************
 GPS_LoRa_tracker_Config.ino
 E220 config program (may be merged to Sender/Receiver program)
-
 Platform: Wemos D1 mini (8266EX) or Wemos mini ESP32
 
- * E220       ----- Wemos D1 mini     ----- Wemos D1 MINI ESP32
+For use of ESP32, use modified LoRa_E220.h (2024.2.3)
+
+ * E220       ----- Wemos D1 mini     ----- Wemos D1 MINI ESP32(compatible pins)
  * M0         ----- D5                ----- D5
  * M1         ----- D6                ----- D6
  * RX         ----- D8 (No pull-up)   ----- D8
@@ -24,7 +25,7 @@ Author : Jay Teramoto
 https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 ***************************************************/
 
-#include <SoftwareSerial.h>
+
 #include "EByte_LoRa_E220_library.h"
 
 #define ESP32 1
@@ -50,20 +51,29 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
   // E220 ports
       #define E220_m0 D5
       #define E220_m1 D6
-      #define E220_rxd D8
-      #define E220_txd D7
+      #define E220_rxd D7
+      #define E220_txd D8
       #define E220_aux D3
 
 #endif
 
+#include <SoftwareSerial.h>
 
+// As both during TX and RX softSerial is disabling interrupts
+// you can not send data from RX to TX on a same ESP32
+// left the original example in just to show how to use
+
+// RX = pin 14, TX = 12, none-invert, buffersize 256.
+SoftwareSerial swSer(D7,D8);
+
+// #include "SoftwareSerial.h"
 // E220 port setting
 // ---------- esp8266 / ESP32 pins --------------
 // LoRa_E220 e220ttl(RX, TX, AUX, M0, M1);  // Arduino RX <-- e220 TX, Arduino TX --> e220 RX 
 // SoftwareSerial mySerial(D7, D8); // Arduino RX <-- e220 TX, Arduino TX --> e220 RX
 // LoRa_E220 e220ttl(&mySerial, D3, D5, D6); // AUX M0 M1
-SoftwareSerial mySerial(E220_rxd, E220_txd); // Arduino RX <-- e220 TX, Arduino TX --> e220 RX
-LoRa_E220 e220ttl(&mySerial, E220_aux, E220_m0, E220_m1); // AUX M0 M1
+// SoftwareSerial mySerial(E220_rxd, E220_txd); // Arduino RX <-- e220 TX, Arduino TX --> e220 RX
+LoRa_E220 e220ttl(&swSer, E220_aux, E220_m0, E220_m1); // AUX M0 M1
 // -------------------------------------
 
 void printParameters(struct Configuration configuration);
@@ -112,7 +122,7 @@ printParameters(configuration);
     //
     configuration.OPTION.subPacketSetting = SPS_200_00;
     configuration.OPTION.RSSIAmbientNoise = RSSI_AMBIENT_NOISE_DISABLED;
-    configuration.OPTION.transmissionPower = POWER_13; // 22->13
+    configuration.OPTION.transmissionPower = POWER_22; // 22->13
     //
     configuration.TRANSMISSION_MODE.enableRSSI = RSSI_ENABLED; // RSSI enable
     configuration.TRANSMISSION_MODE.fixedTransmission = FT_TRANSPARENT_TRANSMISSION;// Transparent (default)
