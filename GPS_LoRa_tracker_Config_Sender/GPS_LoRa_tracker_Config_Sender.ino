@@ -1,8 +1,9 @@
 /***************************************************
-GPS_LoRa_tracker_Config.ino
-E220 config program (may be merged to Sender/Receiver program)
-Platform: Wemos D1 mini (8266EX) or Wemos mini ESP32
+GPS_LoRa_tracker_Config_Sender.ino
+E220 config program
+Platform: Wemos D1 mini (8266EX)
 
+This is for ESP32(receiver), not required for 8266(sender)
 For use of ESP32, use modified LoRa_E220.h (2024.2.3)
 
  * E220       ----- Wemos D1 mini     ----- Wemos D1 MINI ESP32(compatible pins)
@@ -25,56 +26,11 @@ Author : Jay Teramoto
 https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 ***************************************************/
 
-
-#include "EByte_LoRa_E220_library.h"
-
-#define ESP32 1
-
-#if ESP32
-  // port setting for ESP32
-      #define gps_rxd D4
-      #define gps_txd D0
-  
-  // E220 ports
-      #define E220_m0 D5
-      #define E220_m1 D6
-      #define E220_rxd D8
-      #define E220_txd D7
-      #define E220_aux D3
-
-#else
-  // port setting for 8266EX
-  // softserial port for GPS module
-      #define gps_rxd D4
-      #define gps_txd D0
-  
-  // E220 ports
-      #define E220_m0 D5
-      #define E220_m1 D6
-      #define E220_rxd D7
-      #define E220_txd D8
-      #define E220_aux D3
-
-#endif
-
+#include "EByte_LoRa_E220_library.h" // LoRa_E220.h is original
 #include <SoftwareSerial.h>
 
-// As both during TX and RX softSerial is disabling interrupts
-// you can not send data from RX to TX on a same ESP32
-// left the original example in just to show how to use
-
-// RX = pin 14, TX = 12, none-invert, buffersize 256.
 SoftwareSerial swSer(D7,D8);
-
-// #include "SoftwareSerial.h"
-// E220 port setting
-// ---------- esp8266 / ESP32 pins --------------
-// LoRa_E220 e220ttl(RX, TX, AUX, M0, M1);  // Arduino RX <-- e220 TX, Arduino TX --> e220 RX 
-// SoftwareSerial mySerial(D7, D8); // Arduino RX <-- e220 TX, Arduino TX --> e220 RX
-// LoRa_E220 e220ttl(&mySerial, D3, D5, D6); // AUX M0 M1
-// SoftwareSerial mySerial(E220_rxd, E220_txd); // Arduino RX <-- e220 TX, Arduino TX --> e220 RX
-LoRa_E220 e220ttl(&swSer, E220_aux, E220_m0, E220_m1); // AUX M0 M1
-// -------------------------------------
+LoRa_E220 e220ttl(&swSer, D3, D5, D6); // AUX M0 M1
 
 void printParameters(struct Configuration configuration);
 void printModuleInformation(struct ModuleInformation moduleInformation);
@@ -91,6 +47,7 @@ void setup() {
     // Startup all pins and UART
     e220ttl.begin();
  
+   Serial.println("1. Get config"); 
     ResponseStructContainer c;
     c = e220ttl.getConfiguration();
     // It's important get configuration pointer before all other operation
@@ -99,7 +56,8 @@ void setup() {
     Serial.println(c.status.code);
  
     printParameters(configuration);
- 
+
+    Serial.println("2. Get module information"); 
     ResponseStructContainer cMi;
     cMi = e220ttl.getModuleInformation();
     // It's important get information pointer before all other operation
@@ -107,9 +65,12 @@ void setup() {
  
     Serial.println(cMi.status.getResponseDescription());
     Serial.println(cMi.status.code);
- 
-printParameters(configuration);
- 
+
+
+    Serial.println("3. Print module information"); 
+    printModuleInformation(mi);
+
+    Serial.println("4. Set new param"); 
     //  ----------------------- FIXED SENDER RSSI -----------------------
     configuration.ADDL = 0x03;  // For transparent mode both TX and Rx are set to same address=3
     configuration.ADDH = 0x00;
@@ -122,7 +83,7 @@ printParameters(configuration);
     //
     configuration.OPTION.subPacketSetting = SPS_200_00;
     configuration.OPTION.RSSIAmbientNoise = RSSI_AMBIENT_NOISE_DISABLED;
-    configuration.OPTION.transmissionPower = POWER_22; // 22->13
+    configuration.OPTION.transmissionPower = POWER_13;
     //
     configuration.TRANSMISSION_MODE.enableRSSI = RSSI_ENABLED; // RSSI enable
     configuration.TRANSMISSION_MODE.fixedTransmission = FT_TRANSPARENT_TRANSMISSION;// Transparent (default)
@@ -130,11 +91,14 @@ printParameters(configuration);
     configuration.TRANSMISSION_MODE.WORPeriod = WOR_2000_011;
 
     // Set configuration changed and set to not hold the configuration
-    
+
+    Serial.println("5. Set configuration"); 
     ResponseStatus rs = e220ttl.setConfiguration(configuration, WRITE_CFG_PWR_DWN_SAVE);
     Serial.println(rs.getResponseDescription());
     Serial.println(rs.code);
- 
+
+    Serial.println("6. Verify configuration"); 
+
     c = e220ttl.getConfiguration();
     // It's important get configuration pointer before all other operation
     configuration = *(Configuration*) c.data;
@@ -144,7 +108,7 @@ printParameters(configuration);
     printParameters(configuration);
  
     c.close(); 
-}
+    cMi.close();}
  
 void loop() {
  
