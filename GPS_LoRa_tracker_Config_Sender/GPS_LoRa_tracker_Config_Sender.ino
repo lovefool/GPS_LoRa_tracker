@@ -27,6 +27,7 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 ***************************************************/
 
 #include "EByte_LoRa_E220_library.h" // LoRa_E220.h is original
+#include <TinyGPS++.h> //https://github.com/mikalhart/TinyGPSPlus/blob/master/src/TinyGPS%2B%2B.h
 #include <SoftwareSerial.h>
 
 SoftwareSerial swSer(D7,D8);
