@@ -31,10 +31,7 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 #include <TinyGPS++.h> //https://github.com/mikalhart/TinyGPSPlus/blob/master/src/TinyGPS%2B%2B.h
 #include <SoftwareSerial.h>
 
-
-// Uncomment to enable printing out nice debug messages.
-
-//******************** DEBUG ****************** (defined in Lora_E220.h)
+//******************** DEBUG ******************
 // Define where debug output will be printed.
 #define DBG_PRINTER Serial
 
@@ -47,7 +44,6 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
   #define DBG_PRINTLN(...)  {}
 #endif
 //******************** DEBUG ********************
-
 
 // Software Serial for GPS
 int GPSBaud = 9600; 
