@@ -26,11 +26,11 @@ Author : Jay Teramoto
 https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 ***************************************************/
 
-#define GPS_LoRa_DEBUG
 #include "EByte_LoRa_E220_library.h" // LoRa_E220.h is original
 #include <TinyGPS++.h> //https://github.com/mikalhart/TinyGPSPlus/blob/master/src/TinyGPS%2B%2B.h
 #include <SoftwareSerial.h>
 
+#define GPS_LoRa_DEBUG
 //******************** DEBUG ******************
 // Define where debug output will be printed.
 #define DBG_PRINTER Serial
@@ -39,6 +39,7 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 #ifdef GPS_LoRa_DEBUG
   #define DBG_PRINT(...) { DEBUG_PRINTER.print(__VA_ARGS__); }
   #define DBG_PRINTLN(...) { DEBUG_PRINTER.println(__VA_ARGS__); }
+  char sz[32]; // Serial.print buffer
 #else
   #define DBG_PRINT(...)  {}
   #define DBG_PRINTLN(...)  {}
@@ -54,10 +55,7 @@ SoftwareSerial gpsSerial(D4, D0);
 SoftwareSerial LoraSer(D7,D8);
 LoRa_E220 e220ttl(&LoraSer, D3, D5, D6); // AUX M0 M1
 
-unsigned long last_send_time = 0L;
-uint16_t  count;  // For checking data lost at receiver side
-
-struct LoRamessage {
+struct LoRamessage {  // message structure sent to receiver
   char    id[9];
   int16_t count; 
   double  gpslat;
@@ -69,14 +67,16 @@ struct LoRamessage {
   int8_t  gpsminute;
   int8_t  gpssecond;
 }; 
-
 struct LoRamessage msg = {"GPSLoRa1", 0, 0, 0, 0, 0, 0, 0, 0, 0};
-char sz[32]; // Serial.print buffer
 
+unsigned long last_send_time = 0L;
+uint16_t  count;  // For checking data lost at receiver side
+
+//******************** SETUP ********************
 void setup() {
   delay(500);
-  Serial.begin(9600);
-  while(!Serial){};
+  DBG_PRINTER.begin(9600);
+  while(!DBG_PRINTER){};
   delay(500);
   
   DBG_PRINTLN("test");
@@ -84,19 +84,20 @@ void setup() {
  
   gpsSerial.begin(GPSBaud); // Start GPS
   e220ttl.begin();          // Start LoRa E220
-
 }
+
+//******************** LOOP ********************
 
 void loop(){
   while (gpsSerial.available() > 0){
 
     if (gps.encode(gpsSerial.read())){  // GPS data received
-      // ***** 5 sec passed? *****
-        if (millis() - last_send_time > 4999){ 
 
+        // ***** 5 sec passed? *****
+        if (millis() - last_send_time > 4999){ 
           last_send_time = millis();
 
-          // ***** set lat,lng to msg ***** alt?
+          // ***** set lat,lng to msg ***** 
           if (gps.location.isValid())
           {
             DBG_PRINT(gps.location.lat(), 6);
@@ -147,7 +148,7 @@ void loop(){
         // ***** counter increment *****
           count++;
           msg.count = count;
-          DBG_PRINTLN(F("CNT "));
+          DBG_PRINT(F("CNT "));
           DBG_PRINTLN((count));
 
         // ***** send msg via Lora E220 *****
