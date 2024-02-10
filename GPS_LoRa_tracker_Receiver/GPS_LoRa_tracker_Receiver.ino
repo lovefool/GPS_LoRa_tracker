@@ -84,11 +84,9 @@ void setup() {
   while(!DBG_PRINTER){};
   delay(500);
   
-  oled.begin(SSD1306_SWITCHCAPVCC, 0x3c);
-  oled.clearDisplay();
   e220ttl.begin();          // Start LoRa E220}
 
-  DBG_PRINTLN("Start receiving ...."); 
+  oled.begin(SSD1306_SWITCHCAPVCC, 0x3c);
 
   // Display initial 
   oled.clearDisplay();
@@ -102,6 +100,8 @@ void setup() {
   oled.print("Tracker0.1");
 
   oled.display();
+
+  DBG_PRINTLN("Start receiving ...."); 
   delay(3000);
 
 }
