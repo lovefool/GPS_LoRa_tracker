@@ -101,13 +101,13 @@ void loop(){
           {
             DBG_PRINT(gps.location.lat(), 6);
             DBG_PRINT(F(","));
-            DBG_PRINT(gps.location.lng(), 6);
+            DBG_PRINTLN(gps.location.lng(), 6);
             msg.gpslat = gps.location.lat();
             msg.gpslng = gps.location.lng();
           }
           else 
           {
-            DBG_PRINT(F("Lat/Lng INVALID"));
+            DBG_PRINTLN(F("Lat/Lng INVALID"));
             // When invalid, keep last data.
           }
 
@@ -115,14 +115,14 @@ void loop(){
           if (gps.date.isValid())
           {
             sprintf(sz, "%04d/%02d/%02d ", gps.date.year(), gps.date.month(), gps.date.day());
-            DBG_PRINT(sz);
+            DBG_PRINTLN(sz);
             msg.gpsyear = gps.date.year();
             msg.gpsmonth = gps.date.month();
             msg.gpsday = gps.date.day();
           }
           else
           {
-            DBG_PRINT(F("Date INVALID"));
+            DBG_PRINTLN(F("Date INVALID"));
             msg.gpsyear = 0;
             msg.gpsmonth = 0;
             msg.gpsday = 0;
@@ -132,14 +132,14 @@ void loop(){
           if (gps.time.isValid())
           {
             sprintf(sz, "%02d:%02d:%02d", gps.time.hour(), gps.time.minute(), gps.time.second());
-            DBG_PRINT(sz);
+            DBG_PRINTLN(sz);
             msg.gpshour = gps.time.hour();
             msg.gpsminute = gps.time.minute();
             msg.gpssecond = gps.time.second();
           }
           else
           {
-            DBG_PRINT(F("Time INVALID"));
+            DBG_PRINTLN(F("Time INVALID"));
             msg.gpshour = 0;
             msg.gpsminute = 0;
             msg.gpssecond = 0;
@@ -147,8 +147,8 @@ void loop(){
         // ***** counter increment *****
           count++;
           msg.count = count;
-          DBG_PRINT(F("CNT "));
-          DBG_PRINT((count));
+          DBG_PRINTLN(F("CNT "));
+          DBG_PRINTLN((count));
 
         // ***** send msg via Lora E220 *****
           ResponseStatus rs = e220ttl.sendMessage(&msg, sizeof(msg));
@@ -157,7 +157,7 @@ void loop(){
       } 
     }
   } // end of while
-  delay(1000);
-  DBG_PRINTLN("no data");
+  // delay(1000);
+  // DBG_PRINTLN("no data");
 
 } // end of loop
