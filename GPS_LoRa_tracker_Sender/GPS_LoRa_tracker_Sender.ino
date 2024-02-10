@@ -39,12 +39,13 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 #ifdef GPS_LoRa_DEBUG
   #define DBG_PRINT(...) { DEBUG_PRINTER.print(__VA_ARGS__); }
   #define DBG_PRINTLN(...) { DEBUG_PRINTER.println(__VA_ARGS__); }
-  char sz[32]; // Serial.print buffer
 #else
   #define DBG_PRINT(...)  {}
   #define DBG_PRINTLN(...)  {}
 #endif
 //******************** DEBUG ********************
+
+char sz[32]; // Serial.print buffer
 
 // Software Serial for GPS
 int GPSBaud = 9600; 
@@ -87,27 +88,24 @@ void setup() {
 }
 
 //******************** LOOP ********************
-
 void loop(){
-  while (gpsSerial.available() > 0){
+  while (gpsSerial.available() > 0){   // GPS data received
 
-    if (gps.encode(gpsSerial.read())){  // GPS data received
+    if (gps.encode(gpsSerial.read())){ 
 
         // ***** 5 sec passed? *****
         if (millis() - last_send_time > 4999){ 
           last_send_time = millis();
 
           // ***** set lat,lng to msg ***** 
-          if (gps.location.isValid())
-          {
+          if (gps.location.isValid()){
             DBG_PRINT(gps.location.lat(), 6);
             DBG_PRINT(F(","));
             DBG_PRINTLN(gps.location.lng(), 6);
             msg.gpslat = gps.location.lat();
             msg.gpslng = gps.location.lng();
           }
-          else 
-          {
+          else {
             DBG_PRINTLN(F("Lat/Lng INVALID"));
             // When invalid, keep last data.
           }
