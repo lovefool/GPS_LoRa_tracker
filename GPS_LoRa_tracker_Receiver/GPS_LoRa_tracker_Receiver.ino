@@ -3,7 +3,6 @@ GPS_LoRa_tracker_Receiver.ino
 Receiver application (Receive message(GPSdata) via LoRa and display on OLED, and share on WiFi)
 Platform: Wemos D1 mini ESP32
 
-This is for ESP32(receiver), not required for 8266(sender)
 For use of ESP32, use modified LoRa_E220.h (2024.2.3)
 
  * E220       ----- Wemos D1 mini     ----- Wemos D1 MINI ESP32(compatible pins)
@@ -26,7 +25,7 @@ Author : Jay Teramoto
 https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 ***************************************************/
 
-#include "EByte_LoRa_E220_library.h" // LoRa_E220.h is original
+#include "EByte_LoRa_E220_library.h" // LoRa_E220.h is modified !!!!
 #include <SoftwareSerial.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h> //https://github.com/adafruit/Adafruit-GFX-Library
@@ -54,6 +53,14 @@ char sz[32]; // Serial.print buffer
 SoftwareSerial LoraSer(D7,D8);
 LoRa_E220 e220ttl(&LoraSer, D3, D5, D6); // AUX M0 M1
 
+// OLED SSD1306
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET    -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+
+Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
 struct LoRamessage {  // message structure sent to receiver
   char    id[9];
   int16_t count; 
@@ -68,25 +75,14 @@ struct LoRamessage {  // message structure sent to receiver
 }; 
 struct LoRamessage msg = {"        ", 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-// unsigned long last_send_time = 0L;
-// uint16_t  count;  // For checking data lost at receiver side
-
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#define OLED_RESET    -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-
-Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
 void setup() {
   delay(500);
   DBG_PRINTER.begin(9600);
   while(!DBG_PRINTER){};
   delay(500);
   
-  e220ttl.begin();          // Start LoRa E220}
-
-  oled.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  e220ttl.begin();                        // Start LoRa E220}
+  oled.begin(SSD1306_SWITCHCAPVCC, 0x3c); // Start OELD SSD1306
 
   // Display initial 
   oled.clearDisplay();
@@ -103,7 +99,6 @@ void setup() {
 
   DBG_PRINTLN("Start receiving ...."); 
   delay(3000);
-
 }
 
 void loop() {
@@ -115,23 +110,26 @@ void loop() {
  
     // Is something goes wrong print error
     if (rsc.status.code!=1){
+      DBG_PRINT("Response: ");
       DBG_PRINTLN(rsc.status.getResponseDescription());
-    }else{
+
+    } else {
       // Print the data received
+      DBG_PRINT("Response: ");
       DBG_PRINTLN(rsc.status.getResponseDescription()); // Response
+
       msg = *(LoRamessage*) rsc.data;
 
-      DBG_PRINT(msg.id); 
+      DBG_PRINT(msg.id);    // Structured data
       DBG_PRINT(" "); 
-      sprintf(sz, "%6d",msg.count);DBG_PRINTLN(msg.count); // Structured data
-      sprintf(sz, "%10.6f",msg.gpslat);DBG_PRINTLN(sz);
-      sprintf(sz, "%10.6f",msg.gpslng);DBG_PRINTLN(sz);
+      sprintf(sz, "%6d",msg.count); DBG_PRINTLN(msg.count); 
+      sprintf(sz, "%10.6f",msg.gpslat); DBG_PRINTLN(sz);
+      sprintf(sz, "%10.6f",msg.gpslng); DBG_PRINTLN(sz);
       sprintf(sz, "%04d/%02d/%02d %02d:%02d:%02d", msg.gpsyear, msg.gpsmonth, 
               msg.gpsday, msg.gpshour, msg.gpsminute, msg.gpssecond);
       DBG_PRINTLN(sz);
+      
       DBG_PRINT("RSSI: "); DBG_PRINTLN(rsc.rssi, DEC); // RSSI
-
-      rsc.close();
 
       // Display
       oled.clearDisplay();
@@ -158,6 +156,8 @@ void loop() {
 
       oled.display();
       delay(10);
+
+      rsc.close();
     }
   }
 }
