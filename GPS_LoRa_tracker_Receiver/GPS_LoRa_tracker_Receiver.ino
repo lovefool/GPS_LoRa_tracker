@@ -107,17 +107,9 @@ void setup() {
   oled.setTextSize(2);             
 //  oled.setTextColor(WHITE); // SSD1306
   oled.setTextColor(SH110X_WHITE); //SH1106
-
-  oled.setCursor(0,0);      
-  oled.print(" GPS-LoRa");
-
-  oled.setCursor(0,18);
-  oled.print("  Tracker");
-
-  oled.setCursor(0,36);
-  oled.print("   v0.1");
-
-
+  oled.setCursor(0,0);oled.print(" GPS-LoRa");
+  oled.setCursor(0,18);oled.print("  Tracker");
+  oled.setCursor(0,36);oled.print("   v0.1");
   oled.display();
 
   DBG_PRINTLN("Start receiving ...."); 
@@ -133,27 +125,28 @@ void loop() {
  
     // Is something goes wrong print error
     if (rsc.status.code!=1){
-      DBG_PRINT("Response: ");
+      DBG_PRINT("RES:");
       DBG_PRINTLN(rsc.status.getResponseDescription());
 
     } else {
       // Print the data received
-      DBG_PRINT("Response: ");
-      DBG_PRINTLN(rsc.status.getResponseDescription()); // Response
+      DBG_PRINT("RES:");
+      DBG_PRINT(rsc.status.getResponseDescription()); // Response from E220
+      DBG_PRINT(", ");
 
-      msg = *(LoRamessage*) rsc.data;
+      msg = *(LoRamessage*) rsc.data; // Structured data to msg
 
       // Serial output of Structured data (msg)
-      DBG_PRINT(msg.id);DBG_PRINT(", "); //id
-      sprintf(sz, "%6d",msg.count); DBG_PRINT(msg.count);DBG_PRINT(", "); // count
-      sprintf(sz, "%10.6f",msg.gpslat); DBG_PRINT(sz);DBG_PRINT(", "); // latitude
-      sprintf(sz, "%10.6f",msg.gpslng); DBG_PRINT(sz);DBG_PRINT(", "); // longtitude
+      DBG_PRINT(msg.id); DBG_PRINT(", "); //id
+      sprintf(sz, "%6d",msg.count); DBG_PRINT(msg.count); DBG_PRINT(", "); // count
+      sprintf(sz, "%10.6f",msg.gpslat); DBG_PRINT(sz); DBG_PRINT(", "); // latitude
+      sprintf(sz, "%10.6f",msg.gpslng); DBG_PRINT(sz); DBG_PRINT(", "); // longtitude
 
       setTime(msg.gpshour, msg.gpsminute, msg.gpssecond, msg.gpsday, msg.gpsmonth, msg.gpsyear);
       adjustTime(time_offset);   //JST変換
 
-      sprintf(sz, "%04d/%02d/%02d %02d:%02d:%02d, ", year(),month(),day(),hour(),minute(),second());DBG_PRINT(sz); //time stamp
-      
+      sprintf(sz, "%04d/%02d/%02d %02d:%02d:%02d, ", year(),month(),day(),hour(),minute(),second()); DBG_PRINT(sz); //time stamp
+
       DBG_PRINT("RSSI:"); DBG_PRINTLN(rsc.rssi, DEC); // RSSI
 
       // Display
@@ -172,8 +165,11 @@ void loop() {
 
       oled.setTextSize(1);             
       oled.setCursor(0,40);
+      sprintf(sz, "%04d/%02d/%02d %02d:%02d:%02d", year(),month(),day(),hour(),minute(),second()); // Converted to JST
+    /*
       sprintf(sz, "%04d/%02d/%02d %02d:%02d:%02d", msg.gpsyear, msg.gpsmonth, 
                 msg.gpsday, msg.gpshour, msg.gpsminute, msg.gpssecond);
+    */
       oled.print(sz);
 
       oled.setCursor(0,54);
