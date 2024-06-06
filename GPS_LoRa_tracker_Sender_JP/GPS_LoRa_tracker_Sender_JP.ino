@@ -1,7 +1,8 @@
 /***************************************************
-GPS_LoRa_tracker_Sender.ino
+GPS_LoRa_tracker_Sender_JP.ino
 Sender application (Receive GPS data and send it via E220 LoRa module)
 Platform: Wemos D1 mini (8266EX)
+E220 JP version
 
 This is for ESP32(receiver), not required for 8266(sender)
 For use of ESP32, use modified LoRa_E220.h (2024.2.3)
@@ -55,6 +56,10 @@ SoftwareSerial gpsSerial(D4, D0);
 // Software Serial for Lora E220
 SoftwareSerial LoraSer(D7,D8);
 LoRa_E220 e220ttl(&LoraSer, D3, D5, D6); // AUX M0 M1
+
+byte  addh = 0;
+byte  addl = 0;
+byte  channel = 0;
 
 struct LoRamessage {  // message structure sent to receiver
   char    id[9];
@@ -149,18 +154,18 @@ void loop(){
           DBG_PRINT(F("CNT "));
           DBG_PRINTLN((count));
 
-          // DBG_PRINT(F("Message size"));
-          // DBG_PRINTLN((sizeof(msg)));
-        
-
         // ***** send msg via Lora E220 *****
-          ResponseStatus rs = e220ttl.sendMessage(&msg, sizeof(msg));
+        // Send message to fixed destination
+        ResponseStatus rs = e220ttl.sendFixedMessage(addh, addl, channel, &msg, sizeof(msg));
+        //  ResponseStatus rs = e220ttl.sendFixedMessage(addh, addl, channel, "test");
+      
+        //  ResponseStatus rs = e220ttl.sendMessage(&msg, sizeof(msg));
         // Check If there is some problem of successfully send
           DBG_PRINTLN(rs.getResponseDescription());
       } 
     }
   } // end of while
-  delay(1000);
-  DBG_PRINTLN("no data");
+  // delay(1000);
+  // DBG_PRINTLN("no data");
 
 } // end of loop
