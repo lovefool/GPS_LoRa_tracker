@@ -51,14 +51,14 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 
 char sz[32]; // Serial.print buffer
 
+// SoftwareSerial(rxPin, txPin, inverse_logic)
 // Software Serial for GPS
-
 #define GpsRx   2   //  D4
 #define GpsTx   16  //  D0
 
 int GPSBaud = 9600; 
 TinyGPSPlus gps;
-SoftwareSerial gpsSerial(GpsTx, GpsRx);
+SoftwareSerial gpsSerial(GpsRx, GpsTx);
 
 // Software Serial for Lora E220
 #define LoRaRx  13    // D7
@@ -67,7 +67,7 @@ SoftwareSerial gpsSerial(GpsTx, GpsRx);
 #define LoRaM0  14    // D5
 #define LoRaM1  12    // D6
 
-SoftwareSerial LoraSer(LoRaTx, LoRaRx);
+SoftwareSerial LoraSer(LoRaRx, LoRaTx);
 LoRa_E220 e220ttl(&LoraSer, LoRaAUX, LoRaM0, LoRaM1); // AUX M0 M1
 
 // LoRa E220 destination address & channel
