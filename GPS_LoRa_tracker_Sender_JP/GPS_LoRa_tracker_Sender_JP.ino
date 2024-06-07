@@ -1,35 +1,38 @@
 /***************************************************
 GPS_LoRa_tracker_Sender_JP.ino
 Sender application (Receive GPS data and send it via E220 LoRa module)
-Platform: Wemos D1 mini (8266EX)
-E220 JP version
 
-This is for ESP32(receiver), not required for 8266(sender)
-For use of ESP32, use modified LoRa_E220.h (2024.2.3)
+Platform: Generic ESP-12E/12F, Wemos D1 mini (8266EX)
+LoRa module: CLEALINK E220-900T22S(JP) 
 
- * E220       ----- Wemos D1 mini     ----- Wemos D1 MINI ESP32(compatible pins)
- * M0         ----- D5                ----- D5
- * M1         ----- D6                ----- D6
- * RX         ----- D8 (No pull-up)   ----- D8
- * TX         ----- D7 (No pull-up)   ----- D7
- * AUX        ----- D3 (No pull-up)   ----- D3
- * VCC        ----- 3.3v              ----- 3.3V
- * GND        ----- GND               ----- GND
+ * E220(JP)   ESP-12E/12F     Wemos D1 mini/ miniESP32(compatible pins)
+ * M0     ----- GPIO14            D5
+ * M1     ----- GPIO12            D6
+ * RX     ----- GPIO15(pull-down) D8
+ * TX     ----- GPIO13            D7
+ * AUX    ----- GPIO0 (pull-up)   D3
+ * VCC    ----- 3.3v              3.3V
+ * GND    ----- GND               GND
 
- * GPS       ----- Wemos D1 mini
- * RX         ----- D4 (No pull-up)   ----- D4
- * TX         ----- D0 (No pull-up)   ----- D0
- * VCC        ----- 3.3v
- * GND        ----- GND
+ * GPS        ESP-12E/12F     Wemos D1 mini/ miniESP32(compatible pins
+ * RX     ----- GPIO16            D0 
+ * TX     ----- GPIO2(pull-up)    D4      *LED on ESP-12E/12F 
+ * VCC    ----- 3.3v
+ * GND    ----- GND
+
+ * Configure E200-900T22S(JP)
+     <c0><00><08><00><00><70><01><00><C5><00><00>
 
 2024.02.09  Rev.0.1
+2024.06.07  Rev.0.2   Generic ESP-12E/12F  
 Author : Jay Teramoto
 https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 ***************************************************/
 
-#include "EByte_LoRa_E220_library.h" // LoRa_E220.h is original
+#include "EByte_LoRa_E220_library.h" // https://github.com/xreef/EByte_LoRa_E220_Series_Library
+                                    // For ESP32 software serial, E220.h needs to be modified.
 #include <TinyGPS++.h> //https://github.com/mikalhart/TinyGPSPlus/blob/master/src/TinyGPS%2B%2B.h
-#include <SoftwareSerial.h>
+#include <SoftwareSerial.h> // Standard library
 
 #define GPS_LoRa_DEBUG
 //******************** DEBUG ******************
@@ -49,14 +52,25 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 char sz[32]; // Serial.print buffer
 
 // Software Serial for GPS
+
+#define GpsRx   2   //  D4
+#define GpsTx   16  //  D0
+
 int GPSBaud = 9600; 
 TinyGPSPlus gps;
-SoftwareSerial gpsSerial(D4, D0);
+SoftwareSerial gpsSerial(GpsTx, GpsRx);
 
 // Software Serial for Lora E220
-SoftwareSerial LoraSer(D7,D8);
-LoRa_E220 e220ttl(&LoraSer, D3, D5, D6); // AUX M0 M1
+#define LoRaRx  13    // D7
+#define LoRaTx  15    // D8
+#define LoRaAUX 0     // D3
+#define LoRaM0  14    // D5
+#define LoRaM1  12    // D6
 
+SoftwareSerial LoraSer(LoRaTx, LoRaRx);
+LoRa_E220 e220ttl(&LoraSer, LoRaAUX, LoRaM0, LoRaM1); // AUX M0 M1
+
+// LoRa E220 destination address & channel
 byte  addh = 0;
 byte  addl = 0;
 byte  channel = 0;
@@ -98,8 +112,8 @@ void loop(){
 
     if (gps.encode(gpsSerial.read())){ 
 
-        // ***** 5 sec passed? *****
-        if (millis() - last_send_time > 4999){ 
+        // ***** 2 sec passed? *****
+        if (millis() - last_send_time > 1999){ 
           last_send_time = millis();
 
           // ***** set lat,lng to msg ***** 
@@ -165,7 +179,4 @@ void loop(){
       } 
     }
   } // end of while
-  // delay(1000);
-  // DBG_PRINTLN("no data");
-
 } // end of loop
