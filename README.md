@@ -1,5 +1,20 @@
 # GPS_LoRa_tracker
 
+update 2024/06/25
+Sender (On-board)<br>
+ESP12-E(or 12-F) module<br>
+GPS module M6<br>
+LoRa CLEARLINK E220-900T22S(JP)<br>
+
+Receiver (Field) <br>
+ESP-WROOM-32D <br>
+LoRa CLEARLINK E220-900T22S(JP) <br>
+OLED SSD1106 <br>
+
+
+
+
+
 first prototype version.
 
 Sender (On-board) <br>

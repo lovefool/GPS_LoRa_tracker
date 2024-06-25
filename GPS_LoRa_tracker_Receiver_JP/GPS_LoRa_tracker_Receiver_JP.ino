@@ -32,6 +32,7 @@ When use of espSoftwareSerial on ESP32, use modified LoRa_E220.h (2024.2.3)-> Us
 2024.02.15  Rev.0.2 Change OLED device from SSD1306 to SH1106
 2024.02.19  Rev.0.3 TimeLib to UTC to JST, DEBUG output changed for CSV format
 2024.06.21  Rev.9.4 ESP-WROOM-32D HardwareSerial2 and new assign of M0, M1 and AUX
+2024.06.22  Rev.9.5 Change assign of M0, M1 and AUX for eazy wiring
 
 TODO: WiFi 
 
@@ -63,9 +64,9 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 //******************** DEBUG ********************
 
 // E220 pins
-#define M0    27      // GPIO27
-#define M1    14      // GPIO14
-#define AUX   26      // GPIO26
+#define M0    27      // GPIO26
+#define M1    14      // GPIO27
+#define AUX   26      // GPIO14
 //  Serial2 GPIO17=U2TXD, GPIO16=U2RXD
 
 char sz[32]; // Serial.print buffer
