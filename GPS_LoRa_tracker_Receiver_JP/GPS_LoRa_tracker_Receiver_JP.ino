@@ -5,15 +5,16 @@ Receiver application (Receive message(GPSdata) via LoRa and display on OLED, and
 Platform: ESP-WROOM-32D w/ CLEALINK E220-900t22S(JP)
 To add SD Card adaptor (SPI), E220 wiring has been changed
 
+This version use HardwareSerial2 on ESP2 to connect E220.
 When use of espSoftwareSerial on ESP32, use modified LoRa_E220.h (2024.2.3)-> Use original 
 
 *** LoRa *** CLEALINK E220-900T22S(JP)
  * E220       ----- ESP-WROOM-32      
- * M0         ----- GPIO27            
- * M1         ----- GPIO14 
+ * M0         ----- GPIO26            
+ * M1         ----- GPIO27 
  * RX         ----- GPIO17(U2TXD) 
  * TX         ----- GPIO16(U2RXD)
- * AUX        ----- GPIO26 
+ * AUX        ----- GPIO14 
  * VCC        ----- 3.3v
  * GND        ----- GND
 
@@ -25,15 +26,20 @@ When use of espSoftwareSerial on ESP32, use modified LoRa_E220.h (2024.2.3)-> Us
  * SDA        ----- GPIO21(SDA)
 
 *** SD Card ***
-* SD Card     ----- ESP-WROOM-32     
-    Will be added later
+* SD Card     ----- ESP-WROOM-32  
+* VCC         ----- 3.3v
+* CS          ----- GPIO5
+* MOSI        ----- GPIO23
+* CLK         ----- GPIO18
+* MISO        ----- GPIO19
+* GND         ----- GND    
 
 2024.02.10  Rev.0.1 Initial release
 2024.02.15  Rev.0.2 Change OLED device from SSD1306 to SH1106
 2024.02.19  Rev.0.3 TimeLib to UTC to JST, DEBUG output changed for CSV format
-2024.06.21  Rev.9.4 ESP-WROOM-32D HardwareSerial2 and new assign of M0, M1 and AUX
-2024.06.22  Rev.9.5 Change assign of M0, M1 and AUX for eazy wiring
-
+2024.06.21  Rev.0.4 ESP-WROOM-32D HardwareSerial2 and new assign of M0, M1 and AUX
+2024.06.25  Rev.0.5 Change assign of M0, M1 and AUX for eazy wiring
+                    SD card interface
 TODO: WiFi 
 
 Author : Jay Teramoto
@@ -47,6 +53,7 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 // #include <Adafruit_SSD1306.h> //https://github.com/adafruit/Adafruit_SSD1306
 #include <Adafruit_SH110X.h> //https://github.com/adafruit/Adafruit_SH110X
 #include <TimeLib.h> //https://playground.arduino.cc/Code/Time/
+#include <SD.h>
 
 #define GPS_LoRa_DEBUG
 //******************** DEBUG ******************
@@ -64,12 +71,13 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 //******************** DEBUG ********************
 
 // E220 pins
-#define M0    27      // GPIO26
-#define M1    14      // GPIO27
-#define AUX   26      // GPIO14
+#define M0    26      // GPIO26
+#define M1    27      // GPIO27
+#define AUX   14      // GPIO14
 //  Serial2 GPIO17=U2TXD, GPIO16=U2RXD
 
 char sz[32]; // Serial.print buffer
+char logData[256]; // log buffer
 
 // Software Serial for Lora E220
 // SoftwareSerial LoraSer(D7,D8);
@@ -83,6 +91,8 @@ LoRa_E220 e220ttl(&Serial2, AUX, M0, M1); // AUX M0 M1
 
 //Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Adafruit_SH1106G oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+const int chipSelect = 5;  // SD Card Chip select pin
 
 struct LoRamessage {  // message structure sent to receiver
   char    id[9];
@@ -120,14 +130,22 @@ void setup() {
   oled.setCursor(0,36);oled.print("   v0.4");
   oled.display();
 
+// SD Card initialize
+  if (!SD.begin(chipSelect)) {
+    DBG_PRINTLN("SDカードの初期化失敗");
+    return;
+  }
+  DBG_PRINTLN("SDカードの初期化成功");
+
   DBG_PRINTLN("Start receiving ...."); 
-  delay(3000);
+  delay(1000);
 }
 
 void loop() {
   // while Lora data
   // If something available
   if (e220ttl.available()>1) {
+
     // read the String message
     ResponseStructContainer rsc = e220ttl.receiveMessageRSSI(sizeof(msg));
  
@@ -187,7 +205,30 @@ void loop() {
       oled.display();
       delay(10);
 
-      rsc.close();
+      rsc.close(); 
+
+      /*****
+      Log file
+       ****/
+      // SD Card open
+      File logFile = SD.open("/gpslog.txt", FILE_APPEND);  // File open
+
+      if (logFile) {
+        //String logData = "Data: " + String(millis());  // ログデータの作成
+        sprintf(logData,"%s, %10.6d, %10.6d, %04d/%02d/%02d %02d:%02d:%02d,RSSI:%3d COUNT:%6d",msg.id, 
+          msg.gpslat, msg.gpslng, msg.gpsyear, msg.gpsmonth,msg.gpsday,
+          msg.gpshour, msg.gpsminute, msg.gpssecond,
+          rsc.rssi, msg.count) ;
+
+        logFile.println(logData);  // ログデータをファイルに追記(改行付き)
+        
+        logFile.close();  // ファイルを閉じる
+        DBG_PRINT("ログを追記しました: ");
+        DBG_PRINTLN(logData);
+      } else {
+        DBG_PRINTLN("ログファイルを開けませんでした");
+      }
+
     }
   }
 }
