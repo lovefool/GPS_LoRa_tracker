@@ -2,8 +2,10 @@
 GPS_LoRa_tracker_Receiver_HardwareSerial2_Simple.ino
 
 E220 Simple test via ESP32 HardwareSerial2 
+Use original LoRa_E220.h (2024.2.3) 
 
-Use original LoRa_E220.h (2024.2.3)
+**** Caution ****
+As of 2024.06.26 E220 library doesn't work with ESP32 board manager 3.x.x
 
 *** LoRa CLEALINK E220-900T22S(JP) connection ***
  * E220       ----- ESP-WROOM-32      
@@ -23,7 +25,7 @@ E220設定(Fixed, RSSI, addh=0, addl=0,chan=0, and so on)
 Author : Jay Teramoto   https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 ***************************************************/
 
-#include "EByte_LoRa_E220_library.h" // LoRa_E220.h is original.
+#include "EByte_LoRa_E220_library.h" // 1.0.8 LoRa_E220.h is original. https://mischianti.org/category/my-libraries/ebyte-lora-e22-devices/
 #include <TimeLib.h> //https://playground.arduino.cc/Code/Time/
 
 #define GPS_LoRa_DEBUG
