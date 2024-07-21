@@ -34,7 +34,7 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 #include <TinyGPS++.h> //https://github.com/mikalhart/TinyGPSPlus/blob/master/src/TinyGPS%2B%2B.h
 #include <SoftwareSerial.h> // Standard library
 
-#define GPS_LoRa_DEBUG
+// #define GPS_LoRa_DEBUG
 //******************** DEBUG ******************
 // Define where debug output will be printed.
 #define DBG_PRINTER Serial
