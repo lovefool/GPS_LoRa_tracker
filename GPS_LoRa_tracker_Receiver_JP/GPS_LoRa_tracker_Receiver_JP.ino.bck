@@ -40,6 +40,8 @@ When use of espSoftwareSerial on ESP32, use modified LoRa_E220.h (2024.2.3)-> Us
 2024.06.21  Rev.0.4 ESP-WROOM-32D HardwareSerial2 and new assign of M0, M1 and AUX
 2024.06.25  Rev.0.5 Change assign of M0, M1 and AUX for eazy wiring
                     SD card interface
+2024.09.06  Rev.0.6 Change SDcard access. Use FS.h
+
 TODO: WiFi 
 
 Author : Jay Teramoto
@@ -53,9 +55,13 @@ https://github.com/lovefool/GPS_LoRa_tracker/tree/main
 // #include <Adafruit_SSD1306.h> //https://github.com/adafruit/Adafruit_SSD1306
 #include <Adafruit_SH110X.h> //https://github.com/adafruit/Adafruit_SH110X
 #include <TimeLib.h> //https://playground.arduino.cc/Code/Time/
-#include <SD.h>
 
-#define GPS_LoRa_DEBUG
+#include "FS.h"
+#include "SD.h"
+#include "SPI.h"
+// #include <SD.h>
+
+// #define GPS_LoRa_DEBUG
 //******************** DEBUG ******************
 // Define where debug output will be printed.
 #define DBG_PRINTER Serial
@@ -92,7 +98,7 @@ LoRa_E220 e220ttl(&Serial2, AUX, M0, M1); // AUX M0 M1
 //Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Adafruit_SH1106G oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-const int chipSelect = 5;  // SD Card Chip select pin
+// const int chipSelect = 5;  // SD Card Chip select pin
 
 struct LoRamessage {  // message structure sent to receiver
   char    id[9];
@@ -109,6 +115,22 @@ struct LoRamessage {  // message structure sent to receiver
 struct LoRamessage msg = {"        ", 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 #define time_offset 32400    // UTC+9時間(3600 * 9 秒）
+
+void appendFile(fs::FS &fs, const char * path, const char * message){
+    DBG_PRINTLN("Appending to file: %s\n", path);
+
+    File file = fs.open(path, FILE_APPEND);
+    if(!file){
+        DBG_PRINTLN("Failed to open file for appending");
+        return;
+    }
+    if(file.print(message)){
+        DBG_PRINTLN("Message appended");
+    } else {
+        DBG_PRINTLN("Append failed");
+    }
+    file.close();
+}
 
 void setup() {
   delay(500);
@@ -130,12 +152,24 @@ void setup() {
   oled.setCursor(0,36);oled.print("   v0.4");
   oled.display();
 
+
 // SD Card initialize
+
+  if(!SD.begin()){
+      DBG_PRINTLN("Card Mount Failed");
+    // card なしフラグ設定
+    } else {
+      DBG_PRINTLN("Card Mount Failed");
+    // card ありフラグ設定
+  }
+
+/*
   if (!SD.begin(chipSelect)) {
     DBG_PRINTLN("SDカードの初期化失敗");
     return;
   }
   DBG_PRINTLN("SDカードの初期化成功");
+*/
 
   DBG_PRINTLN("Start receiving ...."); 
   delay(1000);
@@ -210,24 +244,17 @@ void loop() {
       /*****
       Log file
        ****/
+
+      /*
       // SD Card open
       File logFile = SD.open("/gpslog.txt", FILE_APPEND);  // File open
 
       if (logFile) {
         //String logData = "Data: " + String(millis());  // ログデータの作成
-        sprintf(logData,"%s, %10.6f, %10.6f, %04d/%02d/%02d, %02d:%02d:%02d, %3d, %6d",
-          msg.id, 
-          msg.gpslat, msg.gpslng, 
-          year(), month(), day(),
-          hour(), minute(), second(),
-          rsc.rssi, msg.count) ;
-
-        /*
-        sprintf(logData,"%s, %10.6f, %10.6f, %04d/%02d/%02d %02d:%02d:%02d,RSSI:%3d COUNT:%6d",msg.id, 
+        sprintf(logData,"%s, %10.6d, %10.6d, %04d/%02d/%02d %02d:%02d:%02d,RSSI:%3d COUNT:%6d",msg.id, 
           msg.gpslat, msg.gpslng, msg.gpsyear, msg.gpsmonth,msg.gpsday,
           msg.gpshour, msg.gpsminute, msg.gpssecond,
           rsc.rssi, msg.count) ;
-        */
 
         logFile.println(logData);  // ログデータをファイルに追記(改行付き)
         
@@ -237,6 +264,8 @@ void loop() {
       } else {
         DBG_PRINTLN("ログファイルを開けませんでした");
       }
+    */
+    appendFile(SD, "/hello.txt", "World!\n");
 
     }
   }
