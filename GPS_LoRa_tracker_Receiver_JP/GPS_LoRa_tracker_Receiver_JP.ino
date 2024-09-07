@@ -34,16 +34,29 @@ When use of espSoftwareSerial on ESP32, use modified LoRa_E220.h (2024.2.3)-> Us
 * MISO        ----- GPIO19
 * GND         ----- GND    
 
+* LED         ----- ESP-WROOM-32  
+* GRN-LED-A   ----- GPIO32
+* GRN-LED-K   ----- GND
+
 2024.02.10  Rev.0.1 Initial release
 2024.02.15  Rev.0.2 Change OLED device from SSD1306 to SH1106
 2024.02.19  Rev.0.3 TimeLib to UTC to JST, DEBUG output changed for CSV format
 2024.06.21  Rev.0.4 ESP-WROOM-32D HardwareSerial2 and new assign of M0, M1 and AUX
 2024.06.25  Rev.0.5 Change assign of M0, M1 and AUX for eazy wiring
                     SD card interface
+2024.09.06  Rev.0.6 Change SD logging / Add LED 
+
 TODO: WiFi 
 
 Author : Jay Teramoto
 https://github.com/lovefool/GPS_LoRa_tracker/tree/main
+
+Arduino IDE 2.3.3
+Adafruit_GFX 1.11.10
+Adafruit_SH110X 2.1.10
+EByte_LoRa_E220_library 1.0.8
+TimeLib 1.6.1
+esp32 2.0.17 <----- version 3.x and later uses ESP-IDF 5. Stay ESP-IDF 4.
 ***************************************************/
 
 #include "EByte_LoRa_E220_library.h" // LoRa_E220.h is original.
@@ -93,6 +106,7 @@ LoRa_E220 e220ttl(&Serial2, AUX, M0, M1); // AUX M0 M1
 Adafruit_SH1106G oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 const int chipSelect = 5;  // SD Card Chip select pin
+bool  SDcard_avail = false; // SD card in module? if not no logging.
 
 struct LoRamessage {  // message structure sent to receiver
   char    id[9];
@@ -109,6 +123,8 @@ struct LoRamessage {  // message structure sent to receiver
 struct LoRamessage msg = {"        ", 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 #define time_offset 32400    // UTC+9時間(3600 * 9 秒）
+
+#define LED 32               // LED - GPIO32
 
 void setup() {
   delay(500);
@@ -127,18 +143,26 @@ void setup() {
   oled.setTextColor(SH110X_WHITE); //SH1106
   oled.setCursor(0,0);oled.print(" GPS-LoRa");
   oled.setCursor(0,18);oled.print("  Tracker");
-  oled.setCursor(0,36);oled.print("   v0.4");
+  oled.setCursor(0,36);oled.print("   v0.6");
   oled.display();
 
 // SD Card initialize
   if (!SD.begin(chipSelect)) {
-    DBG_PRINTLN("SDカードの初期化失敗");
-    return;
+    DBG_PRINTLN("SDCard initialing fail");
+    SDcard_avail = false;
+  } else {
+    DBG_PRINTLN("SDCard initialing success");
+    SDcard_avail = true;
   }
-  DBG_PRINTLN("SDカードの初期化成功");
-
+  
   DBG_PRINTLN("Start receiving ...."); 
   delay(1000);
+  
+  // initialize digital pin LED as an output and blink once
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, HIGH);
+  delay(1000); 
+  digitalWrite(LED, LOW);
 }
 
 void loop() {
@@ -207,46 +231,34 @@ void loop() {
 
       rsc.close(); 
 
-      /*****
-      Log file
-       ****/
-      // SD Card open
-      File logFile = SD.open("/gpslog.txt", FILE_APPEND);  // File open
+      /***** Log file  ****/
+      // Open SD Card when SD card is availale
+      if(SDcard_avail) {
 
-      if (logFile) {
-        //String logData = "Data: " + String(millis());  // ログデータの作成
-        sprintf(logData,"%s, %10.6f, %10.6f, %04d/%02d/%02d, %02d:%02d:%02d, %3d, %6d",
-          msg.id, 
-          msg.gpslat, msg.gpslng, 
-          year(), month(), day(),
-          hour(), minute(), second(),
-          rsc.rssi, msg.count) ;
+        File logFile = SD.open("/gpslog.txt", FILE_APPEND);  // File open
 
-        /*
-        sprintf(logData,"%s, %10.6f, %10.6f, %04d/%02d/%02d %02d:%02d:%02d,RSSI:%3d COUNT:%6d",msg.id, 
-          msg.gpslat, msg.gpslng, msg.gpsyear, msg.gpsmonth,msg.gpsday,
-          msg.gpshour, msg.gpsminute, msg.gpssecond,
-          rsc.rssi, msg.count) ;
-        */
-
-        logFile.println(logData);  // ログデータをファイルに追記(改行付き)
+        if (logFile) {
         
-        logFile.close();  // ファイルを閉じる
-        DBG_PRINT("ログを追記しました: ");
-        DBG_PRINTLN(logData);
-      } else {
-        DBG_PRINTLN("ログファイルを開けませんでした");
+          sprintf(logData, "%s, %10.6f, %10.6f, %04d/%02d/%02d, %02d:%02d:%02d, %3d, %6d",   // ログデータの作成
+            msg.id, 
+            msg.gpslat, msg.gpslng, 
+            year(), month(), day(),
+            hour(), minute(), second(),
+            rsc.rssi, 
+            msg.count) ;
+          
+          logFile.println(logData);  // ログデータをファイルに追記(改行付き)
+          
+          logFile.close();  // ファイルを閉じる
+          DBG_PRINT("loggeg: ");
+          DBG_PRINTLN(logData);
+        } else {
+          DBG_PRINTLN("logging error");
+        }
+
       }
+
 
     }
   }
-}
-
-
-
-
-
-
-
-
-
+} // end of loop
