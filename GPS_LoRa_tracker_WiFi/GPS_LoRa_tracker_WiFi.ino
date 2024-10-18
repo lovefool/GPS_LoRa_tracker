@@ -1,13 +1,21 @@
 /*******************************************************************************
+* GPS LoRa tracker Wifi test (just html and javascript part)
 *
+* 2024/10/18
+* Jay Teramoto 
  ******************************************************************************/
 
 #include <WebServer.h>        // include ESP32 library
 WebServer server (80);        //  and define LED pin
 
+char ssidAP[] = "GPSTRACKER";        // WLAN SSID and password
+char passwordAP[] = "12345678";
+IPAddress local_ip(192,168,77,1);      // pre-defined IP address values
+IPAddress gateway(192,168,77,1);
+IPAddress subnet(255,255,255,0);
 
-char ssid[] = "30F772BFCE30-2G";         // change xxxx to Wi-Fi SSID
-char password[] = "2215093210666";       // change xxxx to Wi-Fi password
+// char ssid[] = "xxxxxxxxxxxxx";         // change xxxx to Wi-Fi SSID
+// char password[] = "xxxxxxxxxxxxx";       // change xxxx to Wi-Fi passwordGPSTRACKER
 
 #include <Ticker.h>         // include Ticker library
 Ticker timer;           // associate timer with Ticker lib
@@ -23,8 +31,15 @@ void setup()
 {
   Serial.begin(9600);         // define Serial Monitor baud rate
   delay(1000);
-  WiFi.begin(ssid, password);       // initialise Wi-Fi
-  while (WiFi.status() != WL_CONNECTED) delay(500); // wait for Wi-Fi connect
+  // WiFi.begin(ssid, password);       // initialise Wi-Fi
+  // while (WiFi.status() != WL_CONNECTED) delay(500); // wait for Wi-Fi connect
+
+  WiFi.mode(WIFI_AP);         // Wi-Fi AP mode
+  delay(1000);            // setup AP mode
+  WiFi.softAP(ssidAP, passwordAP);      // initialise Wi-Fi with
+  WiFi.softAPConfig(local_ip, gateway, subnet); //  predefined IP address
+  server.begin();           // initialise server
+
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());     // display server IP address
   server.begin();
