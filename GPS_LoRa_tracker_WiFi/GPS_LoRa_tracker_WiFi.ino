@@ -17,13 +17,13 @@ IPAddress subnet(255,255,255,0);
 // char ssid[] = "xxxxxxxxxxxxx";         // change xxxx to Wi-Fi SSID
 // char password[] = "xxxxxxxxxxxxx";       // change xxxx to Wi-Fi passwordGPSTRACKER
 
-#include <Ticker.h>         // include Ticker library
-Ticker timer;           // associate timer with Ticker lib
-int lag = 10;           // set timer interval at 10s
+// #include <Ticker.h>         // include Ticker library
+// Ticker timer;           // associate timer with Ticker lib
+// int lag = 10;           // set timer interval at 10s
 // int LEDpin = D3;            // LED pin on D3
 // String LED = "off";         // initial LED state
 // int count = 0;
-String temp, counter;
+// String temp, counter;
 
 #include "build.h"
 
