@@ -45,8 +45,7 @@ When use of espSoftwareSerial on ESP32, use modified LoRa_E220.h (2024.2.3)-> Us
 2024.06.25  Rev.0.5 Change assign of M0, M1 and AUX for eazy wiring
                     SD card interface
 2024.09.06  Rev.0.6 Change SD logging / Add LED 
-
-TODO: WiFi 
+2024.10.21  Rev.0.7 Add WiFi function
 
 Author : Jay Teramoto
 https://github.com/lovefool/GPS_LoRa_tracker/tree/main
@@ -57,6 +56,7 @@ Adafruit_SH110X 2.1.10
 EByte_LoRa_E220_library 1.0.8
 TimeLib 1.6.1
 esp32 2.0.17 <----- version 3.x and later uses ESP-IDF 5. Stay ESP-IDF 4.
+ArduinoJson 7.2.0
 ***************************************************/
 
 #include "EByte_LoRa_E220_library.h" // LoRa_E220.h is original.
@@ -67,6 +67,7 @@ esp32 2.0.17 <----- version 3.x and later uses ESP-IDF 5. Stay ESP-IDF 4.
 #include <Adafruit_SH110X.h> //https://github.com/adafruit/Adafruit_SH110X
 #include <TimeLib.h> //https://playground.arduino.cc/Code/Time/
 #include <SD.h>
+#include <ArduinoJson.h>  //https://arduinojson.org/
 
 #define GPS_LoRa_DEBUG
 //******************** DEBUG ******************
@@ -122,9 +123,87 @@ struct LoRamessage {  // message structure sent to receiver
 }; 
 struct LoRamessage msg = {"        ", 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+char  buff_id[16];
+char  buff_cnt[16];
+char  buff_lat[16];
+char  buff_lng[16];
+char  buff_ymd[16];
+char  buff_hms[16];
+char  buff_RSSI[16];
+
 #define time_offset 32400    // UTC+9時間(3600 * 9 秒）
 
 #define LED 32               // LED - GPIO32
+
+#include <WebServer.h>        // include ESP32 library
+WebServer server (80);
+char ssidAP[] = "GPSTRACKER";        // WLAN SSID and password
+char passwordAP[] = "12345678";
+IPAddress local_ip(192,168,77,1);      // pre-defined IP address values
+IPAddress gateway(192,168,77,1);
+IPAddress subnet(255,255,255,0);
+
+#include  "buildpage.h"
+
+void base()                        // function to load default webpage
+{                                 // and send HTML code to client
+  server.send (200, "text/html", page);
+
+  DBG_PRINTLN("root requested");
+}
+
+
+
+void reload()                        // function to load default webpage
+{                                 // and send HTML code to client
+
+  // document.getElementById("gLAT").innerHTML=res.gLAT;
+  // document.getElementById("gLONG").innerHTML=res.gLONG;
+  // document.getElementById("gID").innerHTML=res.gID;
+  // document.getElementById("gDATE").innerHTML=res.gDATE;
+  // document.getElementById("gTIME").innerHTML=res.gTIME;
+  // document.getElementById("gRSSI").innerHTML=res.gRSSI;
+  // document.getElementById("gCNT").innerHTML=res.gCNT;
+  // std::string gps_json = R"({"gLAT": 123, "GLONG": "Alice","gID": 123,"gDATE": 123,"gTIME": 123,"gRSSI": 123,"gCNT": 123,})";
+
+  StaticJsonDocument<200> doc;
+  static char gps_json[200]="";
+
+  // doc["temperature"] = 24.5;
+  // doc["humidity"] = 60.5;
+  // serializeJson(doc, outputtext, 100);
+  // Serial.println(outputtext);
+
+  doc["gLAT"] = buff_lat;
+  doc["gLONG"] = buff_lng;
+  doc["gID"] = buff_id;
+  doc["gDATE"] = buff_ymd;
+  doc["gTIME"] = buff_hms;
+  doc["gRSSI"] = buff_RSSI;
+  doc["gCNT"] = buff_cnt;
+
+  serializeJson(doc, gps_json, 200);
+  DBG_PRINTLN(gps_json);
+
+
+  // char gps_json[] =R"(
+  // {
+  // "gID": "GPSLoRA1",
+  // "gLAT": " 35.6809591",  
+  // "gLONG": "139.7673068",
+  // "gDATE": "2024/09/30",
+  // "gTIME": "12:00:00",
+  // "gRSSI": "-255",
+  // "gCNT": "123"
+  // }
+  // )";
+
+
+  server.send (200, "text/json", gps_json);
+
+  DBG_PRINTLN("reload requested");
+}
+
 
 void setup() {
   delay(500);
@@ -143,7 +222,7 @@ void setup() {
   oled.setTextColor(SH110X_WHITE); //SH1106
   oled.setCursor(0,0);oled.print(" GPS-LoRa");
   oled.setCursor(0,18);oled.print("  Tracker");
-  oled.setCursor(0,36);oled.print("   v0.6");
+  oled.setCursor(0,36);oled.print("   v0.7");
   oled.display();
 
 // SD Card initialize
@@ -158,6 +237,18 @@ void setup() {
   DBG_PRINTLN("Start receiving ...."); 
   delay(1000);
   
+  WiFi.mode(WIFI_AP);         // Wi-Fi AP mode
+  delay(1000);            // setup AP mode
+  WiFi.softAP(ssidAP, passwordAP);      // initialise Wi-Fi with
+  WiFi.softAPConfig(local_ip, gateway, subnet); //  predefined IP address
+  server.begin();           // initialise server
+
+  // Serial.print("IP address: ");
+  // Serial.println(WiFi.localIP());     // display server IP address
+  server.begin();
+  server.on("/", base);        // map URL to function
+  server.on("/reload", reload);        // map URL to function
+
   // initialize digital pin LED as an output and blink once
   pinMode(LED, OUTPUT);
   digitalWrite(LED, HIGH);
@@ -166,6 +257,10 @@ void setup() {
 }
 
 void loop() {
+
+  // Handle http request
+  server.handleClient();
+
   // while Lora data
   // If something available
   if (e220ttl.available()>1) {
@@ -184,52 +279,66 @@ void loop() {
       DBG_PRINT(rsc.status.getResponseDescription()); // Response from E220
       DBG_PRINT(", ");
 
-      msg = *(LoRamessage*) rsc.data; // Structured data to msg
 
-      // Serial output of Structured data (msg)
-      DBG_PRINT(msg.id); DBG_PRINT(", "); //id
-      sprintf(sz, "%6d",msg.count); DBG_PRINT(msg.count); DBG_PRINT(", "); // count
-      sprintf(sz, "%10.6f",msg.gpslat); DBG_PRINT(sz); DBG_PRINT(", "); // latitude
-      sprintf(sz, "%10.6f",msg.gpslng); DBG_PRINT(sz); DBG_PRINT(", "); // longtitude
+      // Structured data to msg buffer
+      msg = *(LoRamessage*) rsc.data; 
 
+      //Convert UST to JST
       setTime(msg.gpshour, msg.gpsminute, msg.gpssecond, msg.gpsday, msg.gpsmonth, msg.gpsyear);
-      adjustTime(time_offset);   //JST変換
+      adjustTime(time_offset);   
 
-      sprintf(sz, "%04d/%02d/%02d %02d:%02d:%02d, ", year(),month(),day(),hour(),minute(),second()); DBG_PRINT(sz); //time stamp
+      // message format conversion
 
-      DBG_PRINT("RSSI:"); DBG_PRINTLN(rsc.rssi, DEC); // RSSI
+      sprintf(buff_id, "%8s",msg.id);
+      sprintf(buff_cnt, "%6d",msg.count);
+      sprintf(buff_lat, "%10.6f",msg.gpslat);
+      sprintf(buff_lng, "%10.6f",msg.gpslng);
+      sprintf(buff_ymd, "%04d/%02d/%02d", year(),month(),day());
+      sprintf(buff_hms, "%02d:%02d:%02d", hour(),minute(),second());
+      sprintf(buff_RSSI, "%3d", rsc.rssi);
 
-      // Display
+      // Close receiving
+      rsc.close(); 
+
+      // DEBUG : Serial output of Structured data (msg)
+      DBG_PRINT(buff_id); DBG_PRINT(", "); //id
+      DBG_PRINT(buff_cnt); DBG_PRINT(", "); //cnf
+      DBG_PRINT(buff_lat); DBG_PRINT(", "); //latitude
+      DBG_PRINT(buff_lng); DBG_PRINT(", "); //longtitude
+      DBG_PRINT(buff_ymd); DBG_PRINT(", "); //YYYY/MM/DD
+      DBG_PRINT(buff_hms); DBG_PRINT(", "); //HH:MM:SS
+      DBG_PRINTLN(buff_RSSI); // RSSI
+
+      // OLED Display
       oled.clearDisplay();
       oled.setTextSize(2);
       //  oled.setTextColor(WHITE); // SSD1306
       oled.setTextColor(SH110X_WHITE);  //SH1106             
 
-      oled.setCursor(0,0);      
-      sprintf(sz, "%10.6f", msg.gpslat);  
-      oled.print(sz);
+      oled.setCursor(0,0);                // display latitude      
+      // sprintf(sz, "%10.6f", msg.gpslat);  
+      oled.print(buff_lat);
 
-      oled.setCursor(0,18);
-      sprintf(sz, "%10.6f", msg.gpslng);  
-      oled.print(sz);
+      oled.setCursor(0,18);               // display longtitude
+      // sprintf(sz, "%10.6f", msg.gpslng);  
+      oled.print(buff_lng);
 
-      oled.setTextSize(1);             
+      oled.setTextSize(1);                // display JST date and time             
       oled.setCursor(0,40);
-      sprintf(sz, "%04d/%02d/%02d %02d:%02d:%02d", year(),month(),day(),hour(),minute(),second()); // Converted to JST
-    /*
-      sprintf(sz, "%04d/%02d/%02d %02d:%02d:%02d", msg.gpsyear, msg.gpsmonth, 
-                msg.gpsday, msg.gpshour, msg.gpsminute, msg.gpssecond);
-    */
-      oled.print(sz);
+      // sprintf(sz, "%04d/%02d/%02d %02d:%02d:%02d", year(),month(),day(),hour(),minute(),second()); // JST 
+      oled.print(buff_ymd);
+      oled.setCursor(74,40);
+      oled.print(buff_hms);
 
-      oled.setCursor(0,54);
-      sprintf(sz, "RSSI:%3d COUNT:%6d", rsc.rssi, msg.count);
-      oled.print(sz);
+      oled.setCursor(30,54);               // display RSSI and count
+      // sprintf(sz, "RSSI:%3d COUNT:%6d", rsc.rssi, msg.count);
+      oled.print(buff_RSSI);
+      oled.setCursor(60,54);               // display RSSI and count
+      oled.print(buff_cnt);
 
       oled.display();
       delay(10);
 
-      rsc.close(); 
 
       /***** Log file  ****/
       // Open SD Card when SD card is availale
@@ -239,19 +348,28 @@ void loop() {
 
         if (logFile) {
         
-          sprintf(logData, "%s, %10.6f, %10.6f, %04d/%02d/%02d, %02d:%02d:%02d, %3d, %6d",   // ログデータの作成
-            msg.id, 
-            msg.gpslat, msg.gpslng, 
-            year(), month(), day(),
-            hour(), minute(), second(),
-            rsc.rssi, 
-            msg.count) ;
+          // sprintf(logData, "%s, %10.6f, %10.6f, %04d/%02d/%02d, %02d:%02d:%02d, %3d, %6d",   // ログデータの作成
+          //   msg.id, 
+          //   msg.gpslat, msg.gpslng, 
+          //   year(), month(), day(),
+          //   hour(), minute(), second(),
+          //   rsc.rssi, 
+          //   msg.count) ;
           
-          logFile.println(logData);  // ログデータをファイルに追記(改行付き)
+          // logFile.println(logData);  // ログデータをファイルに追記(改行付き)
           
+          logFile.print(buff_ymd);logFile.print(", ");    // Date
+          logFile.print(buff_hms);logFile.print(", ");    // Time
+          logFile.print(buff_cnt);logFile.print(", ");    // cnt
+          logFile.print(buff_lat);logFile.print(", ");    // latitude
+          logFile.print(buff_lng);logFile.print(", ");    // longtitude
+          logFile.print(buff_id);logFile.print(", ");     // id
+          logFile.println(buff_RSSI);                     // RSSI
+
           logFile.close();  // ファイルを閉じる
-          DBG_PRINT("loggeg: ");
-          DBG_PRINTLN(logData);
+          
+          DBG_PRINTLN("logged");
+          // DBG_PRINTLN(logData);
         } else {
           DBG_PRINTLN("logging error");
         }
